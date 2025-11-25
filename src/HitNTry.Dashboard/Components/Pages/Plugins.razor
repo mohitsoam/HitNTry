@@ -6,6 +6,17 @@
 
 <h1 class="mb-3">Plugin Catalog</h1>
 
+@if (_showToast)
+{
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+        <div class="toast show">
+            <div class="toast-body">
+                <div class="alert @_toastClass mb-0">@_toastMessage</div>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="card mb-4">
     <div class="card-body">
         <div class="row g-3 align-items-end">
@@ -73,13 +84,37 @@
                         @if (_openPropsFor == plugin.PluginId)
                         {
                             <div class="mt-3 border rounded p-3 bg-light">
-                                <label class="form-label">Properties (JSON object)</label>
-                                <textarea class="form-control mb-2" @bind="_propsJson" rows="4"></textarea>
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-sm btn-primary" @onclick="() => InvokeWithPropsAsync(plugin.PluginId)">Send</button>
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => ClosePropsEditor()">Cancel</button>
-                                    <span class="text-muted ms-2">Example: { "input": "hello", "useFramework": "true" }</span>
+                                <label class="form-label">Properties (Key / Value)</label>
+
+                                @for (int i = 0; i < _propsItems.Count; i++)
+                                {
+                                    <div class="input-group mb-2">
+                                        <input class="form-control" placeholder="Key" @bind="_propsItems[i].Key" />
+                                        <input class="form-control" placeholder="Value" @bind="_propsItems[i].Value" />
+                                        <button class="btn btn-outline-danger" type="button" @onclick="() => RemovePropAt(i)">Remove</button>
+                                    </div>
+                                }
+
+                                <div class="d-flex gap-2 mb-2">
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="AddProp">Add property</button>
                                 </div>
+
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-primary" disabled="@_isInvoking" @onclick="() => InvokeWithPropsAsync(plugin.PluginId)">
+                                        @if (_isInvoking)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            <span>Sending...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Send</span>
+                                        }
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" disabled="@_isInvoking" @onclick="() => ClosePropsEditor()">Cancel</button>
+                                    <span class="text-muted ms-2">Example keys: <code>input</code>, <code>useFramework</code></span>
+                                </div>
+
                                 @if (!string.IsNullOrWhiteSpace(_propsError))
                                 {
                                     <div class="text-danger mt-2">@_propsError</div>
@@ -146,6 +181,11 @@
     private string? _openPropsFor;
     private string _propsJson = string.Empty;
     private string _propsError = string.Empty;
+    private List<PropItem> _propsItems = new();
+    private bool _isInvoking;
+    private bool _showToast;
+    private string _toastMessage = string.Empty;
+    private string _toastClass = "alert-success";
 
     protected override async Task OnInitializedAsync()
     {
@@ -159,12 +199,16 @@
             _openPropsFor = null;
             _propsJson = string.Empty;
             _propsError = string.Empty;
+            _propsItems.Clear();
         }
         else
         {
             _openPropsFor = pluginId;
             _propsJson = "{ \"input\": \"hello\", \"useFramework\": \"true\" }";
             _propsError = string.Empty;
+            _propsItems.Clear();
+            _propsItems.Add(new PropItem { Key = "input", Value = "hello" });
+            _propsItems.Add(new PropItem { Key = "useFramework", Value = "true" });
         }
     }
 
@@ -178,23 +222,59 @@
     private async Task InvokeWithPropsAsync(string pluginId)
     {
         _propsError = string.Empty;
+        // Build properties dictionary from key/value items
         Dictionary<string, string>? props = null;
+        props = _propsItems
+            .Where(p => !string.IsNullOrWhiteSpace(p.Key))
+            .ToDictionary(p => p.Key!, p => p.Value ?? string.Empty);
+
+        _isInvoking = true;
         try
         {
-            if (!string.IsNullOrWhiteSpace(_propsJson))
-            {
-                props = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(_propsJson);
-            }
+            await Dashboard.ExecutePluginWithPropertiesAsync(pluginId, props);
+            await ShowToastAsync("Plugin invoked successfully", success: true);
+            ClosePropsEditor();
+            await RefreshAsync();
         }
-        catch (System.Text.Json.JsonException jex)
+        catch (Exception ex)
         {
-            _propsError = "Invalid JSON: " + jex.Message;
-            return;
+            _propsError = ex.Message;
+            await ShowToastAsync("Plugin invocation failed: " + ex.Message, success: false);
         }
+        finally
+        {
+            _isInvoking = false;
+        }
+    }
 
-        await Dashboard.ExecutePluginWithPropertiesAsync(pluginId, props);
-        ClosePropsEditor();
-        await RefreshAsync();
+    private void AddProp()
+    {
+        _propsItems.Add(new PropItem());
+    }
+
+    private void RemovePropAt(int index)
+    {
+        if (index >= 0 && index < _propsItems.Count)
+        {
+            _propsItems.RemoveAt(index);
+        }
+    }
+
+    private async Task ShowToastAsync(string message, bool success)
+    {
+        _toastMessage = message;
+        _toastClass = success ? "alert-success" : "alert-danger";
+        _showToast = true;
+        StateHasChanged();
+        await Task.Delay(2500);
+        _showToast = false;
+        StateHasChanged();
+    }
+
+    private sealed class PropItem
+    {
+        public string? Key { get; set; }
+        public string? Value { get; set; }
     }
 
     private async Task RefreshAsync()
