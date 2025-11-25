@@ -10,12 +10,9 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IPluginTriggerBus, PluginTriggerBus>();
         services.Configure<PluginSchedulerOptions>(configuration.GetSection(PluginSchedulerOptions.SectionName));
-        services.Configure<PluginTriggerOptions>(configuration.GetSection(PluginTriggerOptions.SectionName));
         services.AddSingleton<IPluginExecutionOrchestrator, PluginExecutionOrchestrator>();
         services.AddHostedService<PluginOrchestrationBackgroundService>();
-        services.AddHostedService<RedisPluginTriggerSubscriber>();
-        services.AddHostedService<ServiceBusPluginTriggerSubscriber>();
-        services.AddHostedService<KafkaPluginTriggerSubscriber>();
+        // Trigger backends (Redis, ServiceBus, Kafka) removed to keep orchestration simple.
         return services;
     }
 }

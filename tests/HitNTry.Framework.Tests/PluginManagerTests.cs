@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using Azure.Messaging.ServiceBus;
-using Confluent.Kafka;
 using HitNTry.Framework;
 using HitNTry.Framework.Abstractions;
 using HitNTry.PluginContracts;
@@ -13,7 +11,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using StackExchange.Redis;
 using Xunit;
 
 namespace HitNTry.Framework.Tests;
@@ -62,26 +59,11 @@ public sealed class PluginManagerTests : IAsyncDisposable
             builder.AddConsole();
         });
 
-        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Kafka:SampleTopic"] = "hitntry.samples"
-            })
-            .Build());
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
 
         services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("HitNTryTests"));
 
-        services.AddSingleton(new ServiceBusClient("Endpoint=sb://tests.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=localkey123="));
-
-        services.AddSingleton<IProducer<Null, string>>(new ProducerBuilder<Null, string>(new ProducerConfig
-        {
-            BootstrapServers = "localhost:9092",
-            EnableDeliveryReports = false
-        }).Build());
-
-        var redisMock = new Mock<IConnectionMultiplexer>();
-        redisMock.SetupGet(r => r.Configuration).Returns("in-memory");
-        services.AddSingleton(redisMock.Object);
+        // No external transport dependencies required for these tests.
 
         var dbMock = new Mock<IDbConnection>();
         dbMock.SetupGet(db => db.ConnectionString).Returns("Server=(localdb)\\MSSQLLocalDB;");
