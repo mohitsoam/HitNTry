@@ -1,0 +1,9 @@
+{
+  "entryPoint": "HitNTry.SamplePlugin.SampleDataIngestionModule",
+  "packageId": "HitNTry.SamplePlugin",
+  "version": "1.0.0",
+  "author": "HitNTry Team",
+  "tags": [ "demo", "ingestion", "sample" ],
+  "description": "First-party plugin showcasing the HitNTry framework end-to-end."
+}
+

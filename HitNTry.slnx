@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/plugins/">
+    <Project Path="plugins/HitNTry.SamplePlugin/HitNTry.SamplePlugin.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/HitNTry.Dashboard/HitNTry.Dashboard.csproj" />
+    <Project Path="src/HitNTry.Framework/HitNTry.Framework.csproj" />
+    <Project Path="src/HitNTry.Orchestration/HitNTry.Orchestration.csproj" />
+    <Project Path="src/HitNTry.PluginContracts/HitNTry.PluginContracts.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HitNTry.Framework.Tests/HitNTry.Framework.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,195 @@
+@page "/plugins"
+
+@inject PluginDashboardService Dashboard
+
+<PageTitle>Plugins</PageTitle>
+
+<h1 class="mb-3">Plugin Catalog</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Filter by tags</label>
+                <input @bind="_tagFilter" class="form-control" placeholder="demo,critical" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Manual trigger - Plugin Id (optional)</label>
+                <input @bind="_manualPluginId" class="form-control" placeholder="SampleDataIngestion@1.0.0" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Manual trigger - Tags (comma separated)</label>
+                <input @bind="_manualTags" class="form-control" placeholder="demo, ingestion" />
+            </div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary" @onclick="() => PublishTriggerAsync()">Publish Trigger</button>
+            <button class="btn btn-outline-secondary" @onclick="RefreshAsync" disabled="@_isBusy">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" hidden="@(!_isBusy)"></span>
+                Refresh
+            </button>
+            <span class="text-muted ms-2">@_status</span>
+        </div>
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-lg-2 g-3">
+    @if (_plugins is null)
+    {
+        <p>Loading plugin metadata...</p>
+    }
+    else if (!GetFilteredPlugins().Any())
+    {
+        <p>No plugins match the current filter.</p>
+    }
+    else
+    {
+        @foreach (var plugin in GetFilteredPlugins())
+        {
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5>@plugin.Metadata.Name</h5>
+                                <p class="text-muted mb-1">@plugin.Metadata.Description</p>
+                                <small>Version @plugin.Metadata.Version · @plugin.Metadata.Author</small>
+                            </div>
+                            <span class="badge bg-info text-dark align-self-start">@plugin.State</span>
+                        </div>
+                        <div class="mt-3">
+                            @foreach (var tag in plugin.Metadata.Tags)
+                            {
+                                <span class="badge bg-secondary me-1">@tag</span>
+                            }
+                        </div>
+                        <div class="mt-3 d-flex gap-2 flex-wrap">
+                            <button class="btn btn-sm btn-success" @onclick="() => ExecuteAsync(plugin.PluginId)">Execute</button>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => ReloadAsync(plugin.PluginId)">Reload</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => UnloadAsync(plugin.PluginId)">Unload</button>
+                        </div>
+                    </div>
+                    <div class="card-footer small text-muted">
+                        Loaded @plugin.LoadedAt.LocalDateTime | Assembly: @plugin.AssemblyPath
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<h2 class="mt-5">Recent Executions</h2>
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Plugin</th>
+                <th>Status</th>
+                <th>Started</th>
+                <th>Completed</th>
+                <th>Correlation</th>
+                <th>Tags</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_logs.Count == 0)
+            {
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No executions have been recorded yet.</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var log in _logs)
+                {
+                    <tr>
+                        <td>@log.PluginName (@log.Version)</td>
+                        <td>@log.Status</td>
+                        <td>@log.StartedAt.LocalDateTime</td>
+                        <td>@log.CompletedAt?.LocalDateTime</td>
+                        <td>@log.CorrelationId</td>
+                        <td>@log.Tags</td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code
+{
+    private IReadOnlyCollection<PluginDescriptor>? _plugins;
+    private List<PluginExecutionLog> _logs = new();
+    private string _tagFilter = string.Empty;
+    private string _manualPluginId = string.Empty;
+    private string _manualTags = string.Empty;
+    private string _status = "Idle";
+    private bool _isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        _isBusy = true;
+        _status = "Refreshing...";
+        StateHasChanged();
+
+        _plugins = await Dashboard.GetPluginsAsync();
+        _logs = await Dashboard.GetExecutionLogsAsync();
+
+        _isBusy = false;
+        _status = $"Updated @ {DateTimeOffset.Now:t}";
+        StateHasChanged();
+    }
+
+    private IEnumerable<PluginDescriptor> GetFilteredPlugins()
+    {
+        if (_plugins is null)
+        {
+            return Array.Empty<PluginDescriptor>();
+        }
+
+        if (string.IsNullOrWhiteSpace(_tagFilter))
+        {
+            return _plugins;
+        }
+
+        var tags = _tagFilter.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return _plugins.Where(p => p.Metadata.Tags.Intersect(tags, StringComparer.OrdinalIgnoreCase).Any());
+    }
+
+    private async Task ExecuteAsync(string pluginId)
+    {
+        await Dashboard.ExecutePluginAsync(pluginId);
+        await RefreshAsync();
+    }
+
+    private async Task ReloadAsync(string pluginId)
+    {
+        await Dashboard.ReloadAsync(pluginId);
+        await RefreshAsync();
+    }
+
+    private async Task UnloadAsync(string pluginId)
+    {
+        await Dashboard.UnloadAsync(pluginId);
+        await RefreshAsync();
+    }
+
+    private async Task PublishTriggerAsync()
+    {
+        var tags = string.IsNullOrWhiteSpace(_manualTags)
+            ? null
+            : _manualTags.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+        await Dashboard.PublishTriggerAsync(
+            string.IsNullOrWhiteSpace(_manualPluginId) ? null : _manualPluginId,
+            tags);
+
+        _status = "Trigger dispatched";
+    }
+}
+

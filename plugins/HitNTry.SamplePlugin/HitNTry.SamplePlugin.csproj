@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\HitNTry.PluginContracts\HitNTry.PluginContracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.0" />
+    <PackageReference Include="Confluent.Kafka" Version="2.4.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="8.0.5" />
+    <PackageReference Include="StackExchange.Redis" Version="2.7.33" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="PluginManifest.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="CopyPluginArtifacts" AfterTargets="Build" Condition="'$(SolutionDir)' != ''">
+    <PropertyGroup>
+      <DashboardPluginDir>$(SolutionDir)src\HitNTry.Dashboard\Plugins\$(AssemblyName)\</DashboardPluginDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <PluginArtifacts Include="$(TargetDir)**\*.*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(DashboardPluginDir)" />
+    <MakeDir Directories="$(DashboardPluginDir)" />
+    <Copy SourceFiles="@(PluginArtifacts)"
+          DestinationFiles="@(PluginArtifacts->'$(DashboardPluginDir)\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+</Project>
