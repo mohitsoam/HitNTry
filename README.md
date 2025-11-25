@@ -51,3 +51,14 @@ if (props.TryGetValue("input", out var input))
 Notes
 - The host's `IPluginManager` will create a scoped `IPluginContext` for each plugin invocation; plugins should use `context.GetRequiredService<T>()` to access services registered in the host scope.
 - The framework exposes a shared business service interface `HitNTry.PluginContracts.IHitNTryBusinessService` which plugins can call (or the host can call plugins). See `src/HitNTry.PluginContracts` and `src/HitNTry.Framework` for examples.
+
+Summary:
+
+Command: dotnet build c:\git\HitNTry\HitNTry.sln
+
+Run pwsh command? (background terminal):
+$env:ASPNETCORE_ENVIRONMENT="Development"; dotnet run --project "src\HitNTry.Dashboard\HitNTry.Dashboard.csproj"
+
+Set-Location -Path 'C:\git\HitNTry'
+$env:ASPNETCORE_ENVIRONMENT = 'Development'
+dotnet run --project 'src\HitNTry.Dashboard\HitNTry.Dashboard.csproj'
