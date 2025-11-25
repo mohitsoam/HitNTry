@@ -14,6 +14,9 @@ public static class PluginEndpoints
         group.MapPost("/{pluginId}/execute", async ([FromRoute] string pluginId, PluginDashboardService service)
             => Results.Ok(await service.ExecutePluginAsync(pluginId)));
 
+        group.MapPost("/{pluginId}/invoke", async ([FromRoute] string pluginId, [FromBody] Dictionary<string,string> properties, PluginDashboardService service)
+            => Results.Ok(await service.ExecutePluginWithPropertiesAsync(pluginId, properties)));
+
         group.MapPost("/execute/by-tags", async ([FromBody] string[] tags, PluginDashboardService service)
             => Results.Ok(await service.ExecuteFilteredAsync(tags)));
 

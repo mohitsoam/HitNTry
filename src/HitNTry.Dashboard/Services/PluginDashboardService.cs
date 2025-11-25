@@ -36,6 +36,12 @@ public sealed class PluginDashboardService
         return _orchestrator.ExecuteAsync(pluginId, request, cancellationToken);
     }
 
+    public Task<PluginExecutionResult> ExecutePluginWithPropertiesAsync(string pluginId, IReadOnlyDictionary<string, string>? properties, CancellationToken cancellationToken = default)
+    {
+        var request = new PluginExecutionRequest(CorrelationId: Guid.NewGuid().ToString("N"), Properties: properties);
+        return _orchestrator.ExecuteAsync(pluginId, request, cancellationToken);
+    }
+
     public Task<IReadOnlyCollection<PluginExecutionResult>> ExecuteFilteredAsync(string[] tags, CancellationToken cancellationToken = default)
     {
         var filter = new PluginFilter(tags);

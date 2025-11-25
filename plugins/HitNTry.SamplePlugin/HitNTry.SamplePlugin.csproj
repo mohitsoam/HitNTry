@@ -17,7 +17,7 @@
     </None>
   </ItemGroup>
 
-  <Target Name="CopyPluginArtifacts" AfterTargets="Build" Condition="'$(SolutionDir)' != ''">
+  <Target Name="CopyPluginArtifacts" AfterTargets="Build" Condition="'$(SolutionDir)' != '' And '$(SolutionDir)' != '*Undefined*'">
     <PropertyGroup>
       <DashboardPluginDir>$(SolutionDir)src\HitNTry.Dashboard\Plugins\$(AssemblyName)\</DashboardPluginDir>
     </PropertyGroup>

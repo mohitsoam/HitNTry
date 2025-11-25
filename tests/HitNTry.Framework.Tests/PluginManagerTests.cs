@@ -50,6 +50,35 @@ public sealed class PluginManagerTests : IAsyncDisposable
         Assert.NotEmpty(await dbContext.ExecutionLogs.ToListAsync());
     }
 
+    [Fact]
+    public async Task PluginManager_Plugin_Calls_Framework_BusinessService_When_Requested()
+    {
+        using var manager = new PluginManager(
+            _serviceProvider.GetRequiredService<IOptions<PluginRuntimeOptions>>(),
+            _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+            _serviceProvider.GetRequiredService<IConfiguration>(),
+            _serviceProvider.GetRequiredService<ILogger<PluginManager>>());
+
+        await manager.InitializeAsync();
+        var descriptors = manager.GetDescriptors();
+        Assert.NotEmpty(descriptors);
+
+        var descriptor = descriptors.First();
+
+        var props = new Dictionary<string, string>
+        {
+            ["input"] = "hello",
+            ["useFramework"] = "true"
+        };
+
+        var request = new PluginExecutionRequest(Properties: props);
+        var result = await manager.ExecuteAsync(descriptor.PluginId, request);
+        Assert.True(result.Succeeded);
+
+        var dbContext = _serviceProvider.GetRequiredService<AppDbContext>();
+        Assert.NotEmpty(await dbContext.ExecutionLogs.ToListAsync());
+    }
+
     private static ServiceProvider BuildServices(string pluginRoot)
     {
         var services = new ServiceCollection();
@@ -64,7 +93,9 @@ public sealed class PluginManagerTests : IAsyncDisposable
         services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("HitNTryTests"));
 
         // No external transport dependencies required for these tests.
-
+        // Simple test implementation of the framework business service so plugins
+        // that call back into the framework will succeed during unit tests.
+        services.AddSingleton<HitNTry.PluginContracts.IHitNTryBusinessService, TestBusinessService>();
         var dbMock = new Mock<IDbConnection>();
         dbMock.SetupGet(db => db.ConnectionString).Returns("Server=(localdb)\\MSSQLLocalDB;");
         services.AddSingleton(dbMock.Object);
@@ -77,6 +108,12 @@ public sealed class PluginManagerTests : IAsyncDisposable
         });
 
         return services.BuildServiceProvider();
+    }
+
+    private sealed class TestBusinessService : HitNTry.PluginContracts.IHitNTryBusinessService
+    {
+        public Task<HitNTry.PluginContracts.BusinessResult> ExecuteAsync(HitNTry.PluginContracts.BusinessRequest request, CancellationToken cancellationToken = default)
+            => Task.FromResult(new HitNTry.PluginContracts.BusinessResult(true, "test"));
     }
 
     private static void CopySamplePluginArtifacts(string destination)

@@ -76,6 +76,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPluginManager, PluginManager>();
         services.AddHostedService<PluginWarmupHostedService>();
 
+        // Framework common business service available to host and plugins.
+        services.TryAddSingleton<HitNTry.PluginContracts.IHitNTryBusinessService, HitNTryBusinessService>();
+
         return services;
     }
 }
