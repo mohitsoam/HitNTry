@@ -1,15 +1,19 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
+using SQLitePCL;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using poc_1.Data;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace poc_1
 {
@@ -29,6 +33,38 @@ namespace poc_1
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddSingleton<WeatherForecastService>();
+
+            //// Add plugin dependencies
+            //services.AddSingleton<IDbConnection>(sp =>
+            //{
+            //    var config = sp.GetRequiredService<IConfiguration>();
+            //    return new SqlConnection(config["Database:ConnectionString"]);
+            //});
+
+            Batteries.Init(); // ← IMPORTANT: add this FIRST
+
+            services.AddSingleton<IDbConnection>(sp =>
+            {
+                // Shared in-memory SQLite DB
+                var conn = new SqliteConnection("Data Source=:memory:;Cache=Shared");
+
+                conn.Open(); // Must remain open to keep in-memory DB alive
+
+                // Optional: Create sample schema & data
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText =
+                @"
+        CREATE TABLE IF NOT EXISTS Users (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name TEXT NOT NULL
+        );
+
+        INSERT INTO Users (Name) VALUES ('Alice'), ('Bob'), ('Charlie');
+    ";
+                cmd.ExecuteNonQuery();
+
+                return conn;
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
