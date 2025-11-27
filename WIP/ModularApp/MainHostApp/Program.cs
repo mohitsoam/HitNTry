@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Microsoft.Data.Sqlite;
 
 namespace MainHostApp
 {
@@ -13,7 +8,17 @@ namespace MainHostApp
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            // build host
+            var host = CreateHostBuilder(args).Build();
+
+            // build plugin service provider (shared config/db)
+            var serviceProvider = ServiceProviderBuilder.Build();
+
+            // Load plugins BEFORE running the web host
+            PluginLoader.LoadAndExecuteModules(serviceProvider);
+
+            // now run web host (blocks)
+            host.Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
